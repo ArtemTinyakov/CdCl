@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.fft import rfft, rfftfreq
 import matplotlib.pyplot as plt
+import os
 
 def readPostProcess(filename: str) -> (np.array, np.array, np.array):
     with open(filename) as fin:
@@ -13,11 +14,18 @@ def readPostProcess(filename: str) -> (np.array, np.array, np.array):
             Cl.append(float(row[3]))
     return np.array(time), np.array(Cd), np.array(Cl)
 
+if not os.path.exists('pics/'):
+    os.mkdir('pics')
+
+fout = open('CdCl.log', 'w')
+
 print("Default local path to post processing file is ./postProcessing/forceCoeffs1/0/coefficient.dat. If no path entered, default value is used.")
 path = input("Enter path: ")
 if path == '':
     path = "./postProcessing/forceCoeffs1/0/coefficient.dat"
-    print("Default value is used.")
+    fout.write("Default path value is used.\n")
+else:
+    fout.write(f"Using path = {path}.\n")
 
 time, Cd, Cl = readPostProcess(path)
 
@@ -33,21 +41,23 @@ plt.xlabel('time')
 plt.ylabel('Cl')
 plt.grid(True)
 plt.tight_layout()
-plt.savefig('CdCl.png')
+plt.savefig('pics/CdCl.png')
 plt.clf()
 
 print("Default start time from which the flow is considered to be established is 100 sec. If no start time entered, default value is used.")
 startTime = input('Enter start time (in seconds): ')
 if startTime == '':
     startTime = 100
-    print("Default value is used.")
+    fout.write("Default starttime value is used.\n")
 else:
     startTime = float(startTime)
+    fout.write(f"Using starttime = {startTime}.\n")
 
 time = time[time > startTime]
 Cd, Cl = Cd[-len(time):], Cl[-len(time):]
 
 if len(time) < 100:
+    fout.close()
     raise Exception("Not enough data (len of resulting arrays less then 100).")
 
 endIndCd, endIndCl = len(time)-1, len(time)-1
@@ -90,21 +100,22 @@ plt.xlabel('time')
 plt.ylabel('Cl')
 plt.grid(True)
 plt.tight_layout()
-plt.savefig('CdCl_prepeared.png')
+plt.savefig('pics/CdCl_prepeared.png')
 plt.clf()
 
 if len(timeCd) < 100 or len(timeCl) < 100:
+    fout.close()
     raise Exception("Not enough data (len of resulting arrays less then 100).")
 
-print("\n----------------calculating statistics----------------\n")
+fout.write("\n----------------calculating statistics----------------\n\n")
 
 Cd_pulse = Cd - Cd.mean()
 Cl_pulse = Cl - Cl.mean()
 
-print(f"Mean Cd = {round(np.mean(Cd), 5)}, mean Cl = {round(np.mean(Cl), 5)}.")
-print(f"Standart deviation of Cd = {round(np.std(Cd), 5)}, standart deviation of Cl = {round(np.std(Cl), 5)}.")
+fout.write(f"Mean Cd = {round(np.mean(Cd), 5)}\nMean Cl = {round(np.mean(Cl), 5)}.\n")
+fout.write(f"Standart deviation of Cd = {round(np.std(Cd), 5)}\nStandart deviation of Cl = {round(np.std(Cl), 5)}.\n")
 
-print("\n----------------calculating Cl fft----------------\n")
+fout.write("\n----------------calculating Cl fft----------------\n\n")
 
 
 sp = rfft(Cl_pulse)
@@ -115,9 +126,8 @@ max_amplitude_freq_index = np.argmax(np.abs(sp.real))
 plt.bar(freq[:5*max_amplitude_freq_index], sp[:5*max_amplitude_freq_index], width=0.01)
 plt.xlabel('frequency')
 plt.ylabel('Cl_pulse_amplitude')
-plt.savefig("Cl_amplitude-frequency-characteristics.png")
+plt.savefig("pics/Cl_amplitude-frequency-characteristics.png")
 plt.clf()
 
-print('fft of Cl_pulse')
-print(f'max amplitude == {round(max(sp), 5)}, frequency of max amplitude == {round(freq[max_amplitude_freq_index], 5)}')
-
+fout.write(f'max amplitude == {round(max(sp), 5)}\nFrequency of max amplitude == {round(freq[max_amplitude_freq_index], 5)}\n')
+fout.close()
